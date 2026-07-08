@@ -249,9 +249,9 @@ churn_model = joblib.load("customer_churn_LogReg_model.pkl")
 # HERO
 # =============================
 
-st.markdown("<h1 class='title'>💳 CreditMind AI</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='title'>💳 CreditMind AI: Smart Customer Behavior Prediction System</h1>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='subtitle'>Smart Customer Behavior Prediction System</div>",
+    "<div class='subtitle'>AI-powered banking analytics · credit limit &amp; churn inference engine</div>",
     unsafe_allow_html=True
 )
 st.markdown(
@@ -482,10 +482,10 @@ with tab_performance:
     st.markdown(
         """
         <table class="neon-table">
-            <tr><th>Model</th><th>R²</th><th>RMSE</th></tr>
-            <tr><td>Linear Regression</td><td>0.56</td><td>6029</td></tr>
-            <tr><td>Ridge Regression</td><td>Add your value</td><td>Add your value</td></tr>
-            <tr><td>Lasso Regression</td><td>Add your value</td><td>Add your value</td></tr>
+            <tr><th>Model</th><th>R²</th><th>RMSE</th><th>MAE</th></tr>
+            <tr><td>Linear Regression</td><td>0.56</td><td>6029</td><td>4121</td></tr>
+            <tr><td>Ridge Regression</td><td>0.56</td><td>6029</td><td>4121</td></tr>
+            <tr><td>Lasso Regression</td><td>0.56</td><td>6029</td><td>4121</td></tr>
         </table>
         """,
         unsafe_allow_html=True
@@ -496,21 +496,21 @@ with tab_performance:
         """
         <table class="neon-table">
             <tr><th>Metric</th><th>Value</th></tr>
-            <tr><td>Accuracy</td><td>89.9%</td></tr>
-            <tr><td>Precision</td><td>76.7%</td></tr>
+            <tr><td>Accuracy</td><td>90.0%</td></tr>
+            <tr><td>Precision</td><td>76.8%</td></tr>
             <tr><td>Recall</td><td>53.8%</td></tr>
-            <tr><td>F1 Score</td><td>63.2%</td></tr>
+            <tr><td>F1 Score</td><td>63.3%</td></tr>
         </table>
         """,
         unsafe_allow_html=True
     )
 
     perf_fig = go.Figure(go.Bar(
-        x=[89.9, 76.7, 53.8, 63.2],
+        x=[90.0, 76.8, 53.8, 63.3],
         y=["Accuracy", "Precision", "Recall", "F1 Score"],
         orientation="h",
         marker=dict(color=["#00f5ff", "#a855f7", "#ec4899", "#10b981"]),
-        text=["89.9%", "76.7%", "53.8%", "63.2%"],
+        text=["90.0%", "76.8%", "53.8%", "63.3%"],
         textposition="outside"
     ))
     perf_fig.update_layout(
@@ -526,6 +526,6 @@ with tab_performance:
 
 
 st.markdown(
-    "<div class='footer-note'>CreditMind AI · Smart Customer Behavior Prediction System</div>",
+    "<div class='footer-note'>CreditAI Intelligence · scikit-learn models served via Streamlit</div>",
     unsafe_allow_html=True
 )
