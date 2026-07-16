@@ -21,6 +21,9 @@ class ThresholdClassifier:
     def predict_proba(self, X):
         return self.model.predict_proba(X)
 
+import __main__
+__main__.ThresholdClassifier = ThresholdClassifier
+
 # Load the models
 models = {}
 try:
