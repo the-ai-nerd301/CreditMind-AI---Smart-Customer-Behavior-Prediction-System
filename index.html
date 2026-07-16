@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CreditMind AI — an ensemble credit limit and churn prediction dashboard comparing Linear, Ridge and Lasso regression models in real time." />
+    <meta name="theme-color" content="#0d0d0d" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d0d0d'/%3E%3Cpath d='M25 62 L42 40 L57 52 L76 26' stroke='%23bfff5c' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <title>CreditMind AI — Smart Customer Behavior Prediction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #fff;
+            --bg-card: #f5f5f5;
+            --text: #0d0d0d;
+            --text-muted: #6b6b6b;
+            --accent: #bfff5c;
+            --accent-dark: #6b8f2e;
+            --radius-sm: 1000px;
+            --radius: 2rem;
+            --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --neon-green: #10b981;
+            --neon-red: #ef4444;
+            --neon-amber: #f59e0b;
+            --model-linear: #2b2b2b;
+            --model-ridge: #7a9a3d;
+            --model-lasso: #bfff5c;
+            --font-display: 'Orbitron', sans-serif;
+            --font-alt: 'Rajdhani', sans-serif;
+            --font-mono: 'Share Tech Mono', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 100px;
+            -webkit-font-smoothing: antialiased;
+            font-size: 10px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        ::selection {
+            background: var(--accent);
+            color: #000;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent-dark);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 12rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 2.4rem;
+            }
+            html {
+                font-size: 8px;
+            }
+        }
+
+        /* ── Scroll progress ── */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: var(--accent);
+            z-index: 10000;
+        }
+
+        /* ── Custom Cursor ── */
+        .cursor-dot {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: #000;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+        }
+        .cursor-dot.on-dark { background: #fff; }
+
+        .cursor-ring {
+            position: fixed;
+            width: 48px;
+            height: 48px;
+            border: 1.5px solid rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99998;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s var(--ease-out), height 0.4s var(--ease-out),
+                border-color 0.4s var(--ease-out), background 0.4s var(--ease-out);
+        }
+        .cursor-ring.on-dark { border-color: rgba(255, 255, 255, 0.4); }
+
+        .cursor-ring.hover {
+            width: 72px;
+            height: 72px;
+            border-color: var(--accent);
+            background: rgba(191, 255, 92, 0.08);
+        }
+
+        .cursor-ring.hover-text {
+            width: 90px;
+            height: 90px;
+            border-color: var(--accent);
+            background: rgba(191, 255, 92, 0.12);
+        }
+
+        .cursor-text {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100000;
+            color: #000;
+            font-weight: 600;
+            font-size: 1.4rem;
+            white-space: nowrap;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.3s var(--ease-out), color 0.3s;
+            top: 0;
+            left: 0;
+        }
+        .cursor-text.on-dark { color: #fff; }
+
+        .cursor-text.visible {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* ── Navbar ── */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 2.4rem 0;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid transparent;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, padding 0.35s var(--ease-out);
+        }
+
+        header.scrolled {
+            background: rgba(255, 255, 255, 0.92);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            padding: 1.4rem 0;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .logo span { color: var(--accent-dark); }
+
+        .nav-links {
+            display: flex;
+            gap: 4.4rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            font-size: 1.4rem;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            position: relative;
+            padding: 0.4rem 0;
+            transition: color 0.3s;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 1.5px;
+            background: #000;
+            transition: width 0.35s var(--ease-out);
+        }
+        .nav-links a:hover { color: #000; }
+        .nav-links a:hover::after { width: 100%; }
+        .nav-links a.nav-cta::after { display: none; }
+
+        /* Specificity fix: this must beat ".nav-links a" (0,1,1), so it is
+           written as "a.nav-cta" (also 0,1,1) and placed after it in the
+           cascade, otherwise the plain link styles above silently win and
+           the button loses its padding/weight. */
+        a.nav-cta {
+            background: transparent;
+            color: #000 !important;
+            padding: 1.2rem 3rem;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 1.4rem;
+            border: 2px solid #000;
+            transition: all 0.4s var(--ease-out);
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+        a.nav-cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: #000;
+            border-radius: var(--radius-sm);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.5s var(--ease-out);
+            z-index: -1;
+        }
+        a.nav-cta:hover { color: #fff !important; border-color: #000; }
+        a.nav-cta:hover::before {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 101;
+        }
+        .hamburger span {
+            display: block;
+            width: 26px;
+            height: 2px;
+            background: #000;
+            border-radius: 4px;
+            transition: 0.35s var(--ease-out);
+        }
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Hero */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-end;
+            padding: 14rem 0 8rem;
+            overflow: hidden;
+        }
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+            pointer-events: none;
+            transition: transform 0.3s ease-out;
+        }
+        .hero > .container { position: relative; z-index: 1; }
+
+        @keyframes nodePulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 0.95; }
+        }
+        .pulse-node { animation: nodePulse 3.2s ease-in-out infinite; }
+
+        .hero-title {
+            font-weight: 500;
+            font-size: clamp(4.5rem, 9vw, 9rem);
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.6rem;
+        }
+        .hero-subtitle {
+            max-width: 84rem;
+            font-size: 2rem;
+            line-height: 1.3;
+            color: var(--text-muted);
+            margin-bottom: 2.4rem;
+        }
+        .word {
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: top;
+            margin: -0.2em;
+        }
+        .word span {
+            display: inline-block;
+            padding: 0.2em;
+            transform: translateY(120%);
+            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .word span.revealed { transform: translateY(0); }
+
+        .hud-row {
+            display: flex;
+            gap: 1.6rem;
+            flex-wrap: wrap;
+            margin-bottom: 2.4rem;
+        }
+        .hud-chip {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            color: #333;
+            background: #f5f5f5;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 20px;
+            padding: 0.6rem 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            animation: dotPulse 2s infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.45); }
+            50% { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.7rem 4.4rem;
+            border-radius: var(--radius-sm);
+            font-weight: 650;
+            font-size: 1.5rem;
+            text-decoration: none;
+            transition: transform 0.3s var(--ease-smooth), opacity 0.3s;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            background: transparent;
+            color: #000;
+            cursor: pointer;
+        }
+        .btn-primary { background: var(--accent); border-color: var(--accent); }
+        .btn-outline { border-color: #000; color: #000; }
+        .btn-light { border-color: rgba(255,255,255,0.2); color: #fff; }
+        .btn:disabled, .btn.is-loading {
+            opacity: 0.65;
+            cursor: progress;
+            pointer-events: none;
+        }
+        .btn-ripple {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: inherit;
+        }
+        .btn-ripple span {
+            display: block;
+            width: 100%;
+            height: 100%;
+            transform: translateY(101%);
+            background: #000;
+            border-radius: 50% 50% 0 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0, 1), border-radius 0.5s cubic-bezier(0.4, 0, 0, 1);
+        }
+        .btn-light .btn-ripple span { background: #fff; }
+        .btn:hover .btn-ripple span {
+            border-radius: 0;
+            transform: translateY(0);
+        }
+        .btn-title {
+            position: relative;
+            display: block;
+            overflow: hidden;
+            z-index: 2;
+        }
+        .btn-title span {
+            display: block;
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-title span::after {
+            content: attr(data-text);
+            display: block;
+            position: absolute;
+            top: 110%;
+            left: 0;
+            color: #fff;
+        }
+        .btn-light .btn-title span::after { color: #000; }
+        .btn:hover .btn-title span { transform: translateY(-110%); }
+        .btn:hover { transform: scale(1.03); }
+
+        /* Sections */
+        .section {
+            padding: 20rem 0;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .section-eyebrow {
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 1.3rem;
+            color: var(--accent-dark);
+            margin-bottom: 1.2rem;
+            display: block;
+        }
+        .section-header {
+            font-weight: 500;
+            font-size: clamp(4.5rem, 9vw, 9rem);
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin-bottom: 4rem;
+        }
+
+        /* Form sections (grouped inputs) */
+        .form-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 3.2rem;
+            border: 1px solid rgba(0,0,0,0.08);
+            margin-bottom: 3rem;
+            transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+        }
+        .form-section-title {
+            font-family: var(--font-alt);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1.8rem;
+            margin-bottom: 2.4rem;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+        .section-title-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--accent-dark);
+            flex-shrink: 0;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+        .card {
+            background: var(--bg-card);
+            border-radius: 2rem;
+            padding: 2.8rem;
+            border: 1px solid rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.06); }
+        .card-title {
+            font-family: var(--font-alt);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .card-value {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            font-weight: 700;
+            color: #000;
+        }
+        .card-value.big { font-size: 4rem; }
+        .card-hero { border-color: rgba(0,0,0,0.15); background: #fafafa; }
+        .bar-track {
+            height: 6px;
+            background: #e6e6e6;
+            border-radius: 10px;
+            margin-top: 1.4rem;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.8s var(--ease-out);
+        }
+        .delta-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+        }
+        .best-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            font-size: 1.05rem;
+            font-weight: 700;
+            padding: 0.2rem 1rem;
+            border-radius: 20px;
+            font-family: var(--font-mono);
+            letter-spacing: 0.3px;
+        }
+
+        /* Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 2.4rem;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 0.8rem; }
+        .form-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: var(--text-muted);
+        }
+        .form-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+        }
+        .form-value-pill {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.12);
+            border-radius: 20px;
+            padding: 0.2rem 1.1rem;
+            color: #000;
+            min-width: 3.6rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .info-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.1);
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            font-family: Georgia, serif;
+            font-style: italic;
+            cursor: help;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .info-dot::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 135%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: #fff;
+            padding: 0.9rem 1.2rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-family: 'Inter', sans-serif;
+            font-style: normal;
+            font-weight: 400;
+            letter-spacing: 0;
+            white-space: normal;
+            width: 220px;
+            text-align: left;
+            line-height: 1.4;
+            z-index: 20;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .info-dot:hover::after,
+        .info-dot:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+        input, select {
+            padding: 1.2rem 1.6rem;
+            border: 1px solid rgba(0,0,0,0.15);
+            border-radius: 1rem;
+            font-family: inherit;
+            font-size: 1.5rem;
+            background: #fff;
+            transition: border-color 0.3s;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: #000; }
+        input[type="range"] {
+            padding: 0;
+            height: 6px;
+            border-radius: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ddd;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #000;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+        }
+        input[type="range"]::-moz-range-track {
+            background: transparent;
+            height: 6px;
+            border-radius: 10px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #000;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+        }
+        input[type="range"]:focus-visible {
+            box-shadow: 0 0 0 4px rgba(191,255,92,0.5);
+            outline: none;
+        }
+
+        /* Empty state */
+        .empty-state {
+            border: 2px dashed rgba(0,0,0,0.14);
+            border-radius: var(--radius);
+            padding: 6rem 3rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            font-size: 3.6rem;
+            margin-bottom: 1.6rem;
+            opacity: 0.35;
+            color: var(--accent-dark);
+        }
+
+        /* Gauge */
+        .gauge-container { position: relative; width: 200px; height: 200px; margin: 0 auto; }
+        .gauge-bg { fill: none; stroke: #eee; stroke-width: 12; }
+        .gauge-fill { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--ease-out), stroke 0.4s; }
+        .gauge-text { font-family: var(--font-mono); font-size: 2.8rem; font-weight: 700; fill: #000; }
+
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.8rem 1.8rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.3rem;
+            letter-spacing: 0.5px;
+        }
+        .risk-high { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
+        .risk-mod { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }
+        .risk-low { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.4); }
+
+        /* Performance Charts */
+        .chart-container {
+            position: relative;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 3rem;
+            margin-bottom: 3rem;
+            border: 1px solid rgba(0,0,0,0.08);
+            transition: box-shadow 0.3s, opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+        }
+        .chart-container:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+
+        .chart-title {
+            font-family: var(--font-alt);
+            font-size: 1.9rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 1.8rem;
+            flex-wrap: wrap;
+            margin-top: -1rem;
+            margin-bottom: 1.6rem;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--text-muted);
+        }
+        .legend-item { display: flex; align-items: center; gap: 7px; }
+        .legend-swatch {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #000;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-family: var(--font-mono);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .tooltip.visible { opacity: 1; }
+
+        svg text { font-family: 'Inter', sans-serif; }
+
+        /* Table */
+        .table {
+            border-collapse: collapse;
+            font-size: 1.4rem;
+        }
+        .table th, .table td {
+            padding: 1.3rem 1.8rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+        .table th {
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .table tr:last-child td { border-bottom: none; }
+        .table tr.is-best td { background: rgba(191,255,92,0.08); }
+        .table tr:hover td { background: rgba(191,255,92,0.07); }
+
+        @media (max-width: 768px) {
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Footer */
+        footer {
+            background: #000;
+            color: #fff;
+            padding: 12rem 0;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6rem;
+            margin-bottom: 6rem;
+        }
+        .footer-nav {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+        .footer-nav a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 2.4rem;
+            font-weight: 500;
+            position: relative;
+            display: inline-block;
+            width: fit-content;
+            overflow: hidden;
+        }
+        .footer-nav a span {
+            display: block;
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .footer-nav a span::after {
+            content: attr(data-text);
+            display: block;
+            position: absolute;
+            top: 100%;
+            left: 0;
+        }
+        .footer-nav a:hover span { transform: translateY(-100%); }
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.6rem;
+            opacity: 0.7;
+        }
+        .social-links { display: flex; gap: 2.4rem; }
+        .social-link {
+            width: 6rem;
+            height: 6rem;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s, transform 0.3s;
+            color: #fff;
+            text-decoration: none;
+        }
+        .social-link svg { width: 20px; height: 20px; fill: currentColor; }
+        .social-link:hover { background: rgba(255,255,255,0.1); transform: scale(0.95); }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 70%;
+                max-width: 320px;
+                height: 100vh;
+                background: #fff;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 3rem;
+                transition: right 0.5s var(--ease-out);
+                z-index: 99;
+            }
+            .nav-links.open { right: 0; }
+            .hamburger { display: flex; }
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Scroll reveal for form sections & chart cards ── */
+        .form-section, .chart-container {
+            opacity: 0;
+            transform: translateY(34px);
+        }
+        .form-section.revealed, .chart-container.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Result cards: tilt is applied inline via JS transform,
+           the existing .card transition (transform 0.3s) keeps it smooth */
+        .card { transform-style: preserve-3d; }
+
+        /* ── Side progress nav ── */
+        .side-nav {
+            position: fixed;
+            right: 3.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.8rem;
+        }
+        .side-nav::before {
+            content: '';
+            position: absolute;
+            top: -2.4rem;
+            bottom: -2.4rem;
+            left: 50%;
+            width: 1px;
+            background: rgba(0,0,0,0.1);
+            z-index: -1;
+        }
+        .side-nav a {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,0,0,0.25);
+            background: #fff;
+            transition: transform 0.3s var(--ease-out), background 0.3s, border-color 0.3s;
+            display: block;
+        }
+        .side-nav a.active {
+            background: var(--accent);
+            border-color: var(--accent-dark);
+            transform: scale(1.6);
+        }
+        @media (max-width: 1024px) {
+            .side-nav { display: none; }
+        }
+
+        /* ── Chart entrance growth ── */
+        #regSvg rect {
+            transition: height 0.7s var(--ease-out), y 0.7s var(--ease-out);
+        }
+        .radar-data-poly {
+            transform-origin: 150px 150px;
+            transition: transform 0.7s var(--ease-out);
+        }
+
+        /* ── Success particle burst ── */
+        .particle-burst {
+            position: fixed;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+            z-index: 9998;
+        }
+        .particle {
+            position: absolute;
+            top: 0; left: 0;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 1;
+            animation: particleFly 0.8s var(--ease-out) forwards;
+        }
+        @keyframes particleFly {
+            to {
+                transform: translate(var(--tx), var(--ty)) scale(0.3);
+                opacity: 0;
+            }
+        }
+
+        /* Respect reduced motion fully: kill animation/transition rather than
+           shortening durations, so nothing can get stuck mid-animation
+           (e.g. an opacity:0 keyframe start with no matching static state). */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition: none !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <noscript>
+        <style>
+            body { cursor: auto !important; }
+            .cursor-dot, .cursor-ring, .cursor-text, .scroll-progress { display: none !important; }
+        </style>
+    </noscript>
+
+    <div class="scroll-progress" id="scrollProgress"></div>
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    <div class="cursor-text" id="cursorText"></div>
+
+    <nav class="side-nav" id="sideNav" aria-label="Section navigation">
+        <a href="#predict" data-section="predict" aria-label="Jump to Prediction Engine"></a>
+        <a href="#performance" data-section="performance" aria-label="Jump to Model Performance"></a>
+        <a href="#contact" data-section="contact" aria-label="Jump to Contact"></a>
+    </nav>
+
+    <header id="header">
+        <div class="container navbar">
+            <a href="#" class="logo">Credit<span>Mind</span></a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#predict">Predict</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="#contact" class="nav-cta">Contact</a></li>
+            </ul>
+            <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <svg class="hero-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <line x1="70" y1="90" x2="230" y2="150" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="230" y1="150" x2="180" y2="260" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="230" y1="150" x2="400" y2="110" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="400" y1="110" x2="560" y2="180" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="560" y1="180" x2="700" y2="120" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="560" y1="180" x2="620" y2="300" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="180" y1="260" x2="340" y2="330" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="340" y1="330" x2="500" y2="290" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <line x1="500" y1="290" x2="620" y2="300" stroke="#000" stroke-opacity="0.07" stroke-width="1"/>
+            <circle cx="70" cy="90" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="230" cy="150" r="5" fill="var(--accent-dark)" class="pulse-node"/>
+            <circle cx="180" cy="260" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="400" cy="110" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="560" cy="180" r="5" fill="var(--accent-dark)" class="pulse-node" style="animation-delay:1.1s;"/>
+            <circle cx="700" cy="120" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="620" cy="300" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="340" cy="330" r="4" fill="#000" opacity="0.15"/>
+            <circle cx="500" cy="290" r="5" fill="var(--accent-dark)" class="pulse-node" style="animation-delay:2.1s;"/>
+        </svg>
+        <div class="container">
+            <h1 class="hero-title" id="heroTitle">CreditMind AI</h1>
+            <p class="hero-subtitle" id="heroSubtitle">Smart Customer Behavior Prediction System · credit limit & churn inference engine</p>
+            <div class="hud-row">
+                <div class="hud-chip"><span class="dot"></span>3 Models Loaded</div>
+                <div class="hud-chip">🧠 Real‑time Inference</div>
+                <div class="hud-chip">⚙️ Ensemble Voting</div>
+                <div class="hud-chip" id="sysClock"><span class="dot" style="background:var(--accent-dark);"></span>--:--:--</div>
+            </div>
+            <a href="#predict" class="btn btn-primary" data-cursor-text="Go">
+                <span class="btn-ripple"><span></span></span>
+                <span class="btn-title"><span data-text="Start Prediction">Start Prediction</span></span>
+            </a>
+        </div>
+    </section>
+
+    <section class="section" id="predict">
+        <div class="container">
+            <span class="section-eyebrow">Live Inference</span>
+            <h2 class="section-header">Prediction Engine</h2>
+
+            <div class="form-section">
+                <h3 class="form-section-title"><span class="section-title-dot"></span>Customer Profile</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label" for="age">Age</label><input type="number" id="age" value="40"></div>
+                    <div class="form-group"><label class="form-label" for="gender">Gender</label><select id="gender"><option>M</option><option>F</option></select></div>
+                    <div class="form-group"><label class="form-label" for="dependents">Dependents</label><input type="number" id="dependents" value="2"></div>
+                    <div class="form-group"><label class="form-label" for="education">Education</label><select id="education"><option>Graduate</option><option>High School</option><option>Unknown</option><option>Uneducated</option><option>College</option><option>Post-Graduate</option><option>Doctorate</option></select></div>
+                    <div class="form-group"><label class="form-label" for="marital">Marital Status</label><select id="marital"><option>Married</option><option>Single</option><option>Divorced</option><option>Unknown</option></select></div>
+                    <div class="form-group"><label class="form-label" for="income">Income Category</label><select id="income"><option>Less than $40K</option><option>$40K - $60K</option><option>$60K - $80K</option><option>$80K - $120K</option><option>$120K +</option><option>Unknown</option></select></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title"><span class="section-title-dot"></span>Account Relationship</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label" for="card">Card Type</label><select id="card"><option>Blue</option><option>Silver</option><option>Gold</option><option>Platinum</option></select></div>
+                    <div class="form-group">
+                        <div class="form-label-row"><label class="form-label" for="monthsBook">Months with Bank</label><span class="form-value-pill" id="monthsBookVal">36</span></div>
+                        <input type="range" id="monthsBook" min="1" max="70" value="36">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label-row"><label class="form-label" for="products">Products Count</label><span class="form-value-pill" id="productsVal">3</span></div>
+                        <input type="range" id="products" min="1" max="10" value="3">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label-row"><label class="form-label" for="inactive">Inactive Months (12m)</label><span class="form-value-pill" id="inactiveVal">2</span></div>
+                        <input type="range" id="inactive" min="0" max="12" value="2">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label-row"><label class="form-label" for="contacts">Bank Contacts (12m)</label><span class="form-value-pill" id="contactsVal">2</span></div>
+                        <input type="range" id="contacts" min="0" max="10" value="2">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title"><span class="section-title-dot"></span>Credit Position</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label" for="creditLimit">Current Credit Limit ($)</label><input type="number" id="creditLimit" value="5000"></div>
+                    <div class="form-group"><label class="form-label" for="revolvingBal">Revolving Balance ($)</label><input type="number" id="revolvingBal" value="1000"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="openToBuy">Open To Buy ($)<span class="info-dot" tabindex="0" role="img" aria-label="Remaining credit available for new spending, equal to the limit minus the revolving balance." data-tip="Remaining credit available for new spending.">i</span></label>
+                        <input type="number" id="openToBuy" value="4000">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label-row"><label class="form-label" for="utilization">Utilization Ratio<span class="info-dot" tabindex="0" role="img" aria-label="Revolving balance divided by total credit limit." data-tip="Revolving balance ÷ total credit limit.">i</span></label><span class="form-value-pill" id="utilizationVal">0.30</span></div>
+                        <input type="range" id="utilization" min="0" max="1" step="0.01" value="0.3">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title"><span class="section-title-dot"></span>Transaction Behavior</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="amtChange">Amount Change Ratio<span class="info-dot" tabindex="0" role="img" aria-label="Ratio of transaction amount in the most recent quarter versus the first quarter. 1.0 means no change." data-tip="Q4 vs Q1 transaction amount ratio.">i</span></label>
+                        <input type="number" id="amtChange" value="1.0" step="0.05">
+                    </div>
+                    <div class="form-group"><label class="form-label" for="transAmt">Transaction Amount ($)</label><input type="number" id="transAmt" value="4000"></div>
+                    <div class="form-group"><label class="form-label" for="transCt">Transaction Count</label><input type="number" id="transCt" value="60"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="transChange">Transaction Change Ratio<span class="info-dot" tabindex="0" role="img" aria-label="Ratio of transaction count in the most recent quarter versus the first quarter." data-tip="Q4 vs Q1 transaction count ratio.">i</span></label>
+                        <input type="number" id="transChange" value="0.7" step="0.05">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:1rem; display:flex; gap:2rem; justify-content:center; flex-wrap:wrap;">
+                <button id="runPrediction" class="btn btn-primary" data-cursor-text="Run">
+                    <span class="btn-ripple"><span></span></span>
+                    <span class="btn-title"><span data-text="Run AI Prediction" id="runBtnLabel">Run AI Prediction</span></span>
+                </button>
+                <button id="resetPrediction" class="btn btn-outline" data-cursor-text="Reset">
+                    <span class="btn-ripple"><span></span></span>
+                    <span class="btn-title"><span data-text="Reset">Reset</span></span>
+                </button>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="margin-top:5rem;">
+                <div class="empty-state-icon">◎</div>
+                <p style="font-size:1.6rem;">Fill in the customer profile above, then run the model to see credit limit and churn predictions here.</p>
+            </div>
+
+            <div id="resultsContainer" style="display:none; margin-top:5rem;" aria-live="polite">
+                <h3 style="font-size:2.4rem; margin-bottom:2rem; font-family:var(--font-alt); text-transform:uppercase; letter-spacing:0.5px;">💰 Credit Limit Predictions</h3>
+                <div class="card-grid" id="creditCards"></div>
+                <div style="margin-top:4rem;">
+                    <h3 style="font-size:2.4rem; margin-bottom:2rem; font-family:var(--font-alt); text-transform:uppercase; letter-spacing:0.5px;">🔮 Churn Probability</h3>
+                    <div style="display:flex; align-items:center; gap:4rem; flex-wrap:wrap;">
+                        <div class="gauge-container" id="gaugeContainer" role="img" aria-label="Churn probability gauge: 0 percent">
+                            <svg viewBox="0 0 120 120"><circle class="gauge-bg" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="75 100" stroke-dashoffset="0" transform="rotate(135 60 60)"/><circle id="gaugeFill" class="gauge-fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="75 100" stroke-dashoffset="75" transform="rotate(135 60 60)" stroke="#000"/><text x="60" y="55" text-anchor="middle" class="gauge-text" id="gaugePercent">0%</text></svg>
+                        </div>
+                        <div id="churnAdvice" style="flex:1; min-width:250px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="performance">
+        <div class="container">
+            <span class="section-eyebrow">Model Benchmarks</span>
+            <h2 class="section-header">Model Performance</h2>
+            <div class="chart-grid">
+                <!-- Regression grouped bar chart -->
+                <div class="chart-container" id="regressionChart" data-cursor-text="Compare">
+                    <div class="chart-title">📈 Regression Metrics (Credit Limit)</div>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-swatch" style="background:var(--model-linear);"></span>Linear</span>
+                        <span class="legend-item"><span class="legend-swatch" style="background:var(--model-ridge);"></span>Ridge</span>
+                        <span class="legend-item"><span class="legend-swatch" style="background:var(--model-lasso);"></span>Lasso</span>
+                    </div>
+                    <svg viewBox="0 0 400 250" width="100%" height="250" id="regSvg"></svg>
+                    <div class="tooltip" id="regTooltip"></div>
+                    <div style="margin-top:1rem; font-size:1.2rem; color: var(--text-muted);">Each metric is scaled independently (R² isn't on the same axis as RMSE/MAE) — hover a bar for exact values.</div>
+                </div>
+                <!-- Classification radar chart -->
+                <div class="chart-container" id="classificationChart" data-cursor-text="Analyze">
+                    <div class="chart-title">🧮 Classification Metrics (Churn)</div>
+                    <svg viewBox="0 0 300 300" width="100%" height="300" id="radarSvg"></svg>
+                    <div class="tooltip" id="radarTooltip"></div>
+                    <div style="margin-top:1rem; font-size:1.2rem; color: var(--text-muted);">Accuracy, Precision, Recall, F1 Score — hover a point for exact values.</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:3rem; margin-top:3rem; flex-wrap:wrap;">
+                <div class="chart-container" style="flex:1; min-width:300px;">
+                    <div class="chart-title">📋 Quick Summary</div>
+                    <table class="table" style="width:100%;">
+                        <tr><th>Model</th><th>R²</th><th>RMSE</th><th>MAE</th></tr>
+                        <tr><td>Linear Regression</td><td>0.55</td><td>6,140</td><td>4,210</td></tr>
+                        <tr class="is-best"><td>Ridge Regression <span class="best-badge">Best Fit</span></td><td>0.58</td><td>5,890</td><td>4,050</td></tr>
+                        <tr><td>Lasso Regression</td><td>0.56</td><td>6,029</td><td>4,121</td></tr>
+                    </table>
+                </div>
+                <div class="chart-container" style="flex:1; min-width:300px;">
+                    <div class="chart-title">📌 Key Takeaways</div>
+                    <ul style="font-size:1.4rem; line-height:1.8; color:var(--text-muted);">
+                        <li>Ridge regression edges out the group with the strongest fit (R² 0.58) and the lowest error.</li>
+                        <li>The classification model reaches 90% accuracy but trails on recall (53.8%) — some churners still slip through.</li>
+                        <li>Averaging all three regressions into one ensemble estimate smooths out individual model variance.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div style="font-family:var(--font-display); font-size:2.2rem; font-weight:700; margin-bottom:2rem;">Credit<span style="color:var(--accent);">Mind</span></div>
+                    <p style="opacity:0.7;">AI-powered credit behavior analysis. Built with scikit‑learn.</p>
+                </div>
+                <div class="footer-nav">
+                    <a href="#"><span data-text="Models">Models</span></a>
+                    <a href="#"><span data-text="Docs">Docs</span></a>
+                    <a href="https://github.com/the-ai-nerd301"><span data-text="GitHub">GitHub</span></a>
+                    <a href="#"><span data-text="Contact">Contact</span></a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>2026, CreditMind AI</span>
+                <div class="social-links">
+                    <a href="https://github.com/the-ai-nerd301" class="social-link" data-cursor-text="Visit" aria-label="GitHub"><svg viewBox="0 0 24 24"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6.2 0c2.3-1.5 3.4-1.2 3.4-1.2.7 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z"/></svg></a>
+                    <a href="https://www.linkedin.com/in/ai-nerd-241125420/" class="social-link" data-cursor-text="Visit" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M20.4 20.4h-3.5v-5.6c0-1.3 0-3-1.9-3s-2.1 1.4-2.1 2.9v5.7H9.4V9h3.4v1.6h.1c.5-.9 1.6-1.9 3.4-1.9 3.6 0 4.3 2.4 4.3 5.5v6.2zM5.3 7.4a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM7 20.4H3.6V9H7v11.4z"/></svg></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const isTouch = 'ontouchstart' in window;
+            const MODEL_COLORS = { linear: '#2b2b2b', ridge: '#7a9a3d', lasso: '#bfff5c' };
+
+            function formatCurrency(v) {
+                return '$' + Math.round(v).toLocaleString('en-US');
+            }
+
+            function animateNumber(el, to, opts) {
+                opts = opts || {};
+                const duration = opts.duration || 700;
+                const format = opts.format || (v => Math.round(v).toString());
+                if (prefersReducedMotion) {
+                    el.textContent = format(to);
+                    return;
+                }
+                const start = performance.now();
+                function tick(now) {
+                    const t = Math.min((now - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    el.textContent = format(to * eased);
+                    if (t < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            }
+
+            function spawnParticleBurst(x, y) {
+                if (prefersReducedMotion) return;
+                const burst = document.createElement('div');
+                burst.className = 'particle-burst';
+                burst.style.left = x + 'px';
+                burst.style.top = y + 'px';
+                const colors = ['#bfff5c', '#6b8f2e', '#0d0d0d'];
+                const count = 10;
+                for (let i = 0; i < count; i++) {
+                    const p = document.createElement('span');
+                    p.className = 'particle';
+                    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+                    const dist = 40 + Math.random() * 40;
+                    p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+                    p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+                    p.style.background = colors[i % colors.length];
+                    burst.appendChild(p);
+                }
+                document.body.appendChild(burst);
+                setTimeout(() => burst.remove(), 900);
+            }
+
+            // ── Custom cursor ──
+            if (isTouch || prefersReducedMotion) {
+                document.querySelector('.cursor-dot').style.display = 'none';
+                document.querySelector('.cursor-ring').style.display = 'none';
+                document.querySelector('.cursor-text').style.display = 'none';
+                document.body.style.cursor = 'auto';
+            }
+
+            const dot = document.getElementById('cursorDot');
+            const ring = document.getElementById('cursorRing');
+            const cursorText = document.getElementById('cursorText');
+            let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+            document.addEventListener('mousemove', e => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                dot.style.left = mouseX + 'px';
+                dot.style.top = mouseY + 'px';
+            });
+            function animateRing() {
+                const dx = mouseX - ringX;
+                const dy = mouseY - ringY;
+                ringX += dx * 0.1;
+                ringY += dy * 0.1;
+                ring.style.left = ringX + 'px';
+                ring.style.top = ringY + 'px';
+                cursorText.style.left = ringX + 'px';
+                cursorText.style.top = ringY + 'px';
+                const dist = Math.min(Math.hypot(dx, dy), 60);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                const stretch = 1 + dist / 90;
+                const squeeze = 1 - dist / 220;
+                ring.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(${stretch}, ${squeeze})`;
+                requestAnimationFrame(animateRing);
+            }
+            if (!isTouch && !prefersReducedMotion) animateRing();
+
+            document.querySelectorAll('a, button, .card, .social-link, .hud-chip, .chart-container').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    ring.classList.add('hover');
+                    const text = el.getAttribute('data-cursor-text');
+                    if (text) { cursorText.textContent = text; cursorText.classList.add('visible'); ring.classList.add('hover-text'); }
+                });
+                el.addEventListener('mouseleave', () => { ring.classList.remove('hover', 'hover-text'); cursorText.classList.remove('visible'); });
+            });
+
+            // ── Cursor contrast: the footer is the only dark section on the page,
+            // so the default black dot/ring/text need to flip to white there ──
+            const darkSection = document.querySelector('footer');
+            if (darkSection) {
+                darkSection.addEventListener('mouseenter', () => {
+                    dot.classList.add('on-dark');
+                    ring.classList.add('on-dark');
+                    cursorText.classList.add('on-dark');
+                });
+                darkSection.addEventListener('mouseleave', () => {
+                    dot.classList.remove('on-dark');
+                    ring.classList.remove('on-dark');
+                    cursorText.classList.remove('on-dark');
+                });
+            }
+
+            // ── Magnetic buttons: pull gently toward the cursor ──
+            if (!isTouch && !prefersReducedMotion) {
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.addEventListener('mousemove', e => {
+                        const r = btn.getBoundingClientRect();
+                        const relX = e.clientX - (r.left + r.width / 2);
+                        const relY = e.clientY - (r.top + r.height / 2);
+                        btn.style.transform = `translate(${relX * 0.18}px, ${relY * 0.35}px) scale(1.03)`;
+                    });
+                    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+                });
+            }
+
+            // ── Hero background: subtle parallax toward the cursor ──
+            const heroBg = document.querySelector('.hero-bg');
+            if (heroBg && !isTouch && !prefersReducedMotion) {
+                document.querySelector('.hero').addEventListener('mousemove', e => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const relX = ((e.clientX - r.left) / r.width - 0.5) * 2;
+                    const relY = ((e.clientY - r.top) / r.height - 0.5) * 2;
+                    heroBg.style.transform = `translate(${relX * -12}px, ${relY * -8}px)`;
+                });
+            }
+
+            // ── Tilt effect for result cards (attached whenever cards are (re)created) ──
+            function addCardTilt(card) {
+                if (isTouch || prefersReducedMotion) return;
+                card.addEventListener('mousemove', e => {
+                    const r = card.getBoundingClientRect();
+                    const relX = (e.clientX - r.left) / r.width - 0.5;
+                    const relY = (e.clientY - r.top) / r.height - 0.5;
+                    card.style.transform = `perspective(700px) rotateX(${relY * -8}deg) rotateY(${relX * 8}deg) translateY(-4px)`;
+                });
+                card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+            }
+
+            // ── Nav ──
+            const hamburger = document.getElementById('hamburger');
+            const navLinks = document.getElementById('navLinks');
+            hamburger.addEventListener('click', () => { hamburger.classList.toggle('active'); navLinks.classList.toggle('open'); });
+            navLinks.querySelectorAll('a').forEach(link => { link.addEventListener('click', () => { hamburger.classList.remove('active'); navLinks.classList.remove('open'); }); });
+
+            // ── Scroll: header state + progress bar ──
+            const scrollProgress = document.getElementById('scrollProgress');
+            window.addEventListener('scroll', () => {
+                document.getElementById('header').classList.toggle('scrolled', window.scrollY > 40);
+                const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const pct = docHeight > 0 ? (window.scrollY / docHeight) * 100 : 0;
+                scrollProgress.style.width = pct + '%';
+            });
+
+            // ── System clock ──
+            function updateClock() {
+                const el = document.getElementById('sysClock');
+                if (!el) return;
+                const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+                el.innerHTML = '<span class="dot" style="background:var(--accent-dark);"></span>' + time;
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // ── Word reveal ──
+            function splitWords(el) {
+                const text = el.textContent.trim();
+                el.innerHTML = text.split(/\s+/).map(w => `<span class="word"><span>${w}</span></span>`).join(' ');
+                return el.querySelectorAll('.word span');
+            }
+            splitWords(document.getElementById('heroTitle'));
+            splitWords(document.getElementById('heroSubtitle'));
+            document.querySelectorAll('.section-header').forEach(h => splitWords(h));
+
+            const revealObserver = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const spans = entry.target.querySelectorAll('.word span');
+                        spans.forEach((s, i) => setTimeout(() => s.classList.add('revealed'), prefersReducedMotion ? 0 : i * 80));
+                        if (entry.target.id === 'performance') drawCharts();
+                        revealObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.2 });
+            ['heroTitle', 'heroSubtitle'].forEach(id => { const el = document.getElementById(id); if (el) revealObserver.observe(el); });
+            document.querySelectorAll('.section-header').forEach(h => revealObserver.observe(h));
+            revealObserver.observe(document.getElementById('performance'));
+
+            // ── Scroll reveal for form sections & chart cards ──
+            const cardRevealObserver = new IntersectionObserver(entries => {
+                entries.forEach((entry, idx) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => entry.target.classList.add('revealed'), prefersReducedMotion ? 0 : idx * 90);
+                        cardRevealObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.15 });
+            document.querySelectorAll('.form-section, .chart-container').forEach(el => cardRevealObserver.observe(el));
+
+            // ── Side nav: highlight the section currently in view ──
+            const sideNavLinks = document.querySelectorAll('#sideNav a');
+            if (sideNavLinks.length) {
+                const sectionObserver = new IntersectionObserver(entries => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            sideNavLinks.forEach(link => link.classList.toggle('active', link.getAttribute('data-section') === entry.target.id));
+                        }
+                    });
+                }, { threshold: 0.4 });
+                ['predict', 'performance', 'contact'].forEach(id => {
+                    const section = document.getElementById(id);
+                    if (section) sectionObserver.observe(section);
+                });
+            }
+
+            // ── Custom range sliders: fill track + value pill ──
+            function updateSliderUI(input) {
+                const min = parseFloat(input.min), max = parseFloat(input.max), val = parseFloat(input.value);
+                const pct = ((val - min) / (max - min)) * 100;
+                input.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, #ddd ${pct}%, #ddd 100%)`;
+                const pill = document.getElementById(input.id + 'Val');
+                if (pill) pill.textContent = (input.id === 'utilization') ? val.toFixed(2) : val;
+            }
+            document.querySelectorAll('input[type="range"]').forEach(input => {
+                updateSliderUI(input);
+                input.addEventListener('input', () => updateSliderUI(input));
+            });
+
+            // ── Charts ──
+            function drawCharts() {
+                // Regression grouped bar chart
+                const regSvg = document.getElementById('regSvg');
+                regSvg.innerHTML = '';
+                const models = ['Linear', 'Ridge', 'Lasso'];
+                const colors = [MODEL_COLORS.linear, MODEL_COLORS.ridge, MODEL_COLORS.lasso];
+                const metrics = ['R²', 'RMSE', 'MAE'];
+                const data = {
+                    'R²': [0.55, 0.58, 0.56],
+                    'RMSE': [6140, 5890, 6029],
+                    'MAE': [4210, 4050, 4121]
+                };
+                // Each metric lives on its own scale (R² is a 0–1 ratio, RMSE/MAE are
+                // dollar errors) so bars are normalized per metric rather than against
+                // one shared axis — a shared scale would make the R² bars invisible.
+                // Group width and spacing are sized so the three groups never touch.
+                const barWidth = 20, innerGap = 6, groupGap = 115, startX = 55, startY = 200, topMargin = 34;
+                const groupWidth = models.length * (barWidth + innerGap) - innerGap;
+                const regTooltip = document.getElementById('regTooltip');
+                const regContainer = document.getElementById('regressionChart');
+
+                // baseline only — no absolute-value axis, since three different
+                // units can't honestly share one numeric scale
+                const axisX = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                axisX.setAttribute("x1", "40"); axisX.setAttribute("y1", startY); axisX.setAttribute("x2", "370"); axisX.setAttribute("y2", startY);
+                axisX.setAttribute("stroke", "#ccc"); axisX.setAttribute("stroke-width", "1");
+                regSvg.appendChild(axisX);
+
+                metrics.forEach((metric, mi) => {
+                    const groupX = startX + mi * groupGap;
+                    const localMax = Math.max(...data[metric]) * 1.22;
+                    models.forEach((m, i) => {
+                        const val = data[metric][i];
+                        const barHeight = (val / localMax) * (startY - topMargin);
+                        const x = groupX + i * (barWidth + innerGap);
+                        const y = startY - barHeight;
+                        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                        rect.setAttribute("x", x);
+                        rect.setAttribute("width", barWidth);
+                        rect.setAttribute("fill", colors[i]);
+                        rect.setAttribute("rx", "4");
+                        rect.setAttribute("opacity", "0.92");
+                        rect.style.cursor = "pointer";
+                        if (prefersReducedMotion) {
+                            rect.setAttribute("y", y);
+                            rect.setAttribute("height", barHeight);
+                        } else {
+                            rect.setAttribute("y", startY);
+                            rect.setAttribute("height", 0);
+                        }
+                        rect.addEventListener('mousemove', (e) => {
+                            const cRect = regContainer.getBoundingClientRect();
+                            regTooltip.textContent = m + ' — ' + metric + ': ' + (metric === 'R²' ? val.toFixed(2) : val.toLocaleString('en-US'));
+                            regTooltip.style.left = (e.clientX - cRect.left + 12) + 'px';
+                            regTooltip.style.top = (e.clientY - cRect.top + 12) + 'px';
+                            regTooltip.classList.add('visible');
+                        });
+                        rect.addEventListener('mouseleave', () => regTooltip.classList.remove('visible'));
+                        regSvg.appendChild(rect);
+                        if (!prefersReducedMotion) {
+                            requestAnimationFrame(() => requestAnimationFrame(() => {
+                                rect.setAttribute("y", y);
+                                rect.setAttribute("height", barHeight);
+                            }));
+                        }
+                        // value label — always the true value, never the normalized one
+                        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        text.setAttribute("x", x + barWidth/2);
+                        text.setAttribute("y", y - 8);
+                        text.setAttribute("text-anchor", "middle");
+                        text.setAttribute("font-size", "10");
+                        text.setAttribute("fill", "#000");
+                        text.textContent = metric === 'R²' ? val.toFixed(2) : val;
+                        regSvg.appendChild(text);
+                    });
+                    // metric label
+                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    label.setAttribute("x", groupX + groupWidth / 2);
+                    label.setAttribute("y", startY + 20);
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("font-size", "12");
+                    label.setAttribute("fill", "#666");
+                    label.setAttribute("font-weight", "600");
+                    label.textContent = metric;
+                    regSvg.appendChild(label);
+
+                    // faint divider between groups so the eye reads them as separate panels
+                    if (mi < metrics.length - 1) {
+                        const dividerX = groupX + groupWidth + (groupGap - groupWidth) / 2;
+                        const divider = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        divider.setAttribute("x1", dividerX);
+                        divider.setAttribute("y1", topMargin - 10);
+                        divider.setAttribute("x2", dividerX);
+                        divider.setAttribute("y2", startY);
+                        divider.setAttribute("stroke", "#eee");
+                        divider.setAttribute("stroke-width", "1");
+                        regSvg.appendChild(divider);
+                    }
+                });
+
+                // Radar chart for classification
+                const radarSvg = document.getElementById('radarSvg');
+                radarSvg.innerHTML = '';
+                const radarTooltip = document.getElementById('radarTooltip');
+                const radarContainer = document.getElementById('classificationChart');
+                const metricsRadar = ['Accuracy', 'Precision', 'Recall', 'F1'];
+                const values = [0.9007897334649556, 0.6901840490797546, 0.6923076923076923, 0.6912442396313364];
+                const cx = 150, cy = 150, radius = 100;
+                const angleSlice = (2 * Math.PI) / metricsRadar.length;
+
+                // grid
+                for (let level = 1; level <= 5; level++) {
+                    const r = radius * level / 5;
+                    const points = [];
+                    for (let i = 0; i < metricsRadar.length; i++) {
+                        const angle = angleSlice * i - Math.PI/2;
+                        points.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+                    }
+                    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    poly.setAttribute("points", points.join(' '));
+                    poly.setAttribute("fill", "none");
+                    poly.setAttribute("stroke", "#ddd");
+                    poly.setAttribute("stroke-width", "1");
+                    radarSvg.appendChild(poly);
+                }
+
+                // axis lines + labels
+                for (let i = 0; i < metricsRadar.length; i++) {
+                    const angle = angleSlice * i - Math.PI/2;
+                    const x = cx + radius * Math.cos(angle);
+                    const y = cy + radius * Math.sin(angle);
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", cx); line.setAttribute("y1", cy);
+                    line.setAttribute("x2", x); line.setAttribute("y2", y);
+                    line.setAttribute("stroke", "#ddd"); line.setAttribute("stroke-width", "1");
+                    radarSvg.appendChild(line);
+                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    label.setAttribute("x", cx + (radius + 20) * Math.cos(angle));
+                    label.setAttribute("y", cy + (radius + 20) * Math.sin(angle) + 4);
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("font-size", "11");
+                    label.setAttribute("fill", "#333");
+                    label.textContent = metricsRadar[i];
+                    radarSvg.appendChild(label);
+                }
+
+                // data polygon
+                const dataPoints = [];
+                for (let i = 0; i < values.length; i++) {
+                    const angle = angleSlice * i - Math.PI/2;
+                    const r = radius * values[i];
+                    dataPoints.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+                }
+                const dataPoly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                dataPoly.setAttribute("points", dataPoints.join(' '));
+                dataPoly.setAttribute("fill", "rgba(191,255,92,0.2)");
+                dataPoly.setAttribute("stroke", "var(--accent-dark)");
+                dataPoly.setAttribute("stroke-width", "2");
+                dataPoly.setAttribute("class", "radar-data-poly");
+                if (!prefersReducedMotion) dataPoly.style.transform = "scale(0)";
+                radarSvg.appendChild(dataPoly);
+                if (!prefersReducedMotion) {
+                    requestAnimationFrame(() => requestAnimationFrame(() => { dataPoly.style.transform = "scale(1)"; }));
+                }
+
+                // data points (with tooltip)
+                values.forEach((v, i) => {
+                    const angle = angleSlice * i - Math.PI/2;
+                    const x = cx + radius * v * Math.cos(angle);
+                    const y = cy + radius * v * Math.sin(angle);
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", x);
+                    circle.setAttribute("cy", y);
+                    circle.setAttribute("r", "5");
+                    circle.setAttribute("fill", "#0d0d0d");
+                    circle.style.cursor = "pointer";
+                    circle.addEventListener('mousemove', (e) => {
+                        const cRect = radarContainer.getBoundingClientRect();
+                        radarTooltip.textContent = metricsRadar[i] + ': ' + (v * 100).toFixed(1) + '%';
+                        radarTooltip.style.left = (e.clientX - cRect.left + 12) + 'px';
+                        radarTooltip.style.top = (e.clientY - cRect.top + 12) + 'px';
+                        radarTooltip.classList.add('visible');
+                    });
+                    circle.addEventListener('mouseleave', () => radarTooltip.classList.remove('visible'));
+                    radarSvg.appendChild(circle);
+                    const valText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    valText.setAttribute("x", x + 8);
+                    valText.setAttribute("y", y - 6);
+                    valText.setAttribute("font-size", "9");
+                    valText.setAttribute("fill", "#000");
+                    valText.textContent = (v*100).toFixed(1) + '%';
+                    radarSvg.appendChild(valText);
+                });
+            }
+
+            // ── API call to Flask backend ──
+            async function callPredictAPI(formData) {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Prediction failed');
+                }
+                return await response.json();
+            }
+
+            // ── Prediction ──
+            const runBtn = document.getElementById('runPrediction');
+            const resetBtn = document.getElementById('resetPrediction');
+            const runBtnLabel = document.getElementById('runBtnLabel');
+
+            runBtn.addEventListener('click', async () => {
+                if (runBtn.classList.contains('is-loading')) return;
+                runBtn.classList.add('is-loading');
+                runBtn.disabled = true;
+                const originalText = runBtnLabel.textContent;
+                let dots = 0;
+                const dotsTimer = setInterval(() => {
+                    dots = (dots + 1) % 4;
+                    const label = 'Analyzing' + '.'.repeat(dots);
+                    runBtnLabel.textContent = label;
+                    runBtnLabel.setAttribute('data-text', label);
+                }, 250);
+
+                try {
+                    // Gather form data
+                    const formData = {
+                        age: parseFloat(document.getElementById('age').value) || 40,
+                        gender: document.getElementById('gender').value,
+                        dependents: parseFloat(document.getElementById('dependents').value) || 2,
+                        education: document.getElementById('education').value,
+                        marital: document.getElementById('marital').value,
+                        income: document.getElementById('income').value,
+                        card: document.getElementById('card').value,
+                        monthsBook: parseFloat(document.getElementById('monthsBook').value) || 36,
+                        products: parseFloat(document.getElementById('products').value) || 3,
+                        inactive: parseFloat(document.getElementById('inactive').value) || 2,
+                        contacts: parseFloat(document.getElementById('contacts').value) || 2,
+                        creditLimit: parseFloat(document.getElementById('creditLimit').value) || 5000,
+                        revolvingBal: parseFloat(document.getElementById('revolvingBal').value) || 1000,
+                        openToBuy: parseFloat(document.getElementById('openToBuy').value) || 4000,
+                        amtChange: parseFloat(document.getElementById('amtChange').value) || 1.0,
+                        transAmt: parseFloat(document.getElementById('transAmt').value) || 4000,
+                        transCt: parseFloat(document.getElementById('transCt').value) || 60,
+                        transChange: parseFloat(document.getElementById('transChange').value) || 0.7,
+                        utilization: parseFloat(document.getElementById('utilization').value) || 0.3
+                    };
+
+                    const result = await callPredictAPI(formData);
+
+                    const lr = result.credit_limits.linear;
+                    const ridge = result.credit_limits.ridge;
+                    const lasso = result.credit_limits.lasso;
+                    const ensemble = result.credit_limits.ensemble;
+                    const spread = Math.max(lr, ridge, lasso) - Math.min(lr, ridge, lasso);
+                    const currentLimit = formData.creditLimit;
+                    const deltaPct = currentLimit ? ((ensemble - currentLimit) / currentLimit) * 100 : 0;
+                    const deltaColor = deltaPct >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
+                    const deltaArrow = deltaPct >= 0 ? '▲' : '▼';
+                    const maxModelVal = Math.max(lr, ridge, lasso);
+
+                    document.getElementById('creditCards').innerHTML = `
+                        <div class="card">
+                            <div class="card-title">Linear Regression</div>
+                            <div class="card-value" data-target="${lr}">$0</div>
+                            <div class="bar-track"><div class="bar-fill" style="background:${MODEL_COLORS.linear};"></div></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Ridge Regression</div>
+                            <div class="card-value" data-target="${ridge}">$0</div>
+                            <div class="bar-track"><div class="bar-fill" style="background:${MODEL_COLORS.ridge};"></div></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Lasso Regression</div>
+                            <div class="card-value" data-target="${lasso}">$0</div>
+                            <div class="bar-track"><div class="bar-fill" style="background:${MODEL_COLORS.lasso};"></div></div>
+                        </div>
+                        <div class="card card-hero">
+                            <div class="card-title">Ensemble Average <span class="best-badge">Recommended</span></div>
+                            <div class="card-value big" data-target="${ensemble}">$0</div>
+                            <div style="color:var(--text-muted); margin-top:0.8rem;">Spread: ${formatCurrency(spread)}</div>
+                            <div class="delta-text" style="color:${deltaColor};">${deltaArrow} ${Math.abs(deltaPct).toFixed(1)}% vs current limit</div>
+                        </div>
+                    `;
+
+                    document.querySelectorAll('#creditCards .card-value').forEach(el => {
+                        const target = parseFloat(el.getAttribute('data-target'));
+                        animateNumber(el, target, { duration: 700, format: formatCurrency });
+                    });
+                    
+                    const barVals = [lr, ridge, lasso];
+                    const barFills = document.querySelectorAll('#creditCards .bar-fill');
+                    requestAnimationFrame(() => {
+                        barFills.forEach((el, i) => { el.style.width = (barVals[i] / maxModelVal * 100) + '%'; });
+                    });
+                    document.querySelectorAll('#creditCards .card').forEach(addCardTilt);
+
+                    const prob = result.churn_probability;
+                    const gaugeFill = document.getElementById('gaugeFill');
+                    const offset = 75 - (prob * 75);
+                    gaugeFill.setAttribute('stroke-dashoffset', offset);
+                    gaugeFill.style.stroke = prob > 0.6 ? '#ef4444' : (prob > 0.4 ? '#f59e0b' : '#10b981');
+                    animateNumber(document.getElementById('gaugePercent'), prob * 100, { duration: 700, format: v => v.toFixed(1) + '%' });
+                    document.getElementById('gaugeContainer').setAttribute('aria-label', 'Churn probability gauge: ' + (prob * 100).toFixed(1) + ' percent');
+
+                    document.getElementById('churnAdvice').innerHTML = prob > 0.6 ?
+                        `<div class="risk-badge risk-high"><span class="dot" style="background:#ef4444;"></span>HIGH RISK</div><p style="margin-top:1.6rem;">Elevated churn signal — prioritize retention.</p>` :
+                        (prob > 0.4 ?
+                            `<div class="risk-badge risk-mod"><span class="dot" style="background:#f59e0b;"></span>MODERATE RISK</div><p style="margin-top:1.6rem;">Monitor engagement.</p>` :
+                            `<div class="risk-badge risk-low"><span class="dot" style="background:#10b981;"></span>LOW RISK</div><p style="margin-top:1.6rem;">Standard engagement is fine.</p>`
+                        );
+
+                    document.getElementById('emptyState').style.display = 'none';
+                    document.getElementById('resultsContainer').style.display = 'block';
+                    
+                    const btnRect = runBtn.getBoundingClientRect();
+                    spawnParticleBurst(btnRect.left + btnRect.width / 2, btnRect.top + btnRect.height / 2);
+                    document.getElementById('resultsContainer').scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+                } catch (err) {
+                    console.error('Prediction error:', err);
+                    runBtnLabel.textContent = '⚠️ Error';
+                    runBtnLabel.setAttribute('data-text', '⚠️ Error');
+                    setTimeout(() => {
+                        runBtnLabel.textContent = originalText;
+                        runBtnLabel.setAttribute('data-text', originalText);
+                    }, 2000);
+                } finally {
+                    clearInterval(dotsTimer);
+                    runBtn.classList.remove('is-loading');
+                    runBtn.disabled = false;
+                }
+            });
+
+            resetBtn.addEventListener('click', () => {
+                const defaults = {
+                    age: 40, dependents: 2, monthsBook: 36, products: 3, inactive: 2, contacts: 2,
+                    creditLimit: 5000, revolvingBal: 1000, openToBuy: 4000, amtChange: 1.0,
+                    transAmt: 4000, transCt: 60, transChange: 0.7, utilization: 0.3
+                };
+                Object.keys(defaults).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.value = defaults[id]; el.dispatchEvent(new Event('input')); }
+                });
+                document.getElementById('gender').value = 'M';
+                document.getElementById('education').value = 'Graduate';
+                document.getElementById('marital').value = 'Married';
+                document.getElementById('income').value = 'Less than $40K';
+                document.getElementById('card').value = 'Blue';
+                document.getElementById('resultsContainer').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+            });
+
+            // Draw charts if already visible on load
+            if (document.getElementById('performance').getBoundingClientRect().top < window.innerHeight) {
+                drawCharts();
+            }
+        })();
+    </script>
+</body>
+</html>
